@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Straight Line General Form Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+        .slider-thumb::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            border: none;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+
+    <!-- MathJax Configuration and Script -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body class="min-h-screen text-slate-800 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">Straight Line: General Form</h1>
+                <p class="text-slate-600">The general form of a straight line is <span class="font-semibold text-indigo-600 text-lg">\(Ax + By + C = 0\)</span>. Adjust the values of \(A\), \(B\), and \(C\) below to see how they affect the line, its slope, and its intercepts.</p>
+            </div>
+            <button id="toggleQuizBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition-colors whitespace-nowrap">
+                Enter Quiz Mode
+            </button>
+        </header>
+
+        <!-- Quiz Header (Hidden initially) -->
+        <div id="quizStatus" class="hidden bg-indigo-50 rounded-2xl border border-indigo-100 p-4 flex justify-between items-center">
+            <div class="text-lg font-semibold text-indigo-900">Player: <span id="playerNameDisplay" class="text-indigo-600"></span></div>
+            <div class="text-lg font-semibold text-indigo-900">Score: <span id="playerScoreDisplay" class="text-indigo-600">0 / 0</span></div>
+        </div>
+
+        <!-- Explorer View -->
+        <div id="explorerView" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+                <!-- Controls and Calculations -->
+                <div class="lg:col-span-5 space-y-6">
+                    
+                    <!-- Sliders Section -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2">1. Adjust Coefficients</h2>
+                        
+                        <div class="space-y-5">
+                            <!-- Slider A -->
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="font-medium text-slate-700">\(A\) (Coefficient of \(x\))</label>
+                                    <span id="valA" class="font-bold text-indigo-600">2</span>
+                                </div>
+                                <input type="range" id="sliderA" min="-10" max="10" value="2" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            </div>
+
+                            <!-- Slider B -->
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="font-medium text-slate-700">\(B\) (Coefficient of \(y\))</label>
+                                    <span id="valB" class="font-bold text-indigo-600">4</span>
+                                </div>
+                                <input type="range" id="sliderB" min="-10" max="10" value="4" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            </div>
+
+                            <!-- Slider C -->
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="font-medium text-slate-700">\(C\) (Constant)</label>
+                                    <span id="valC" class="font-bold text-indigo-600">-8</span>
+                                </div>
+                                <input type="range" id="sliderC" min="-20" max="20" value="-8" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            </div>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-center">
+                            <p class="text-sm text-indigo-400 font-semibold mb-1 uppercase tracking-wide">Current Equation</p>
+                            <p id="currentEq" class="text-2xl font-bold text-indigo-900">\(2x + 4y - 8 = 0\)</p>
+                            <p id="invalidMsg" class="text-red-500 font-semibold text-sm hidden mt-2">\(A\) and \(B\) cannot both be zero!</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Explanations & Graph -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- Graph Section -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center">
+                        <h2 class="text-xl font-semibold mb-4 w-full border-b pb-2">2. Interactive Graph</h2>
+                        <div class="relative w-full max-w-[500px] aspect-square rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-inner">
+                            <canvas id="graphCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                            
+                            <!-- Legend -->
+                            <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded-lg border border-slate-200 text-xs shadow-sm space-y-1">
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span>y-intercept</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span>x-intercept</div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-0.5 bg-emerald-500"></span>Slope</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Step by step calculations -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- X-Intercept -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <h3 class="text-lg font-semibold">\(x\)-intercept</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">Where the line crosses the \(x\)-axis. Set \(y = 0\).</p>
+                    <div class="bg-slate-50 p-3 rounded-lg font-mono text-sm space-y-2 text-slate-700" id="calcXInt">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Y-Intercept -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                        <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <h3 class="text-lg font-semibold">\(y\)-intercept</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">Where the line crosses the \(y\)-axis. Set \(x = 0\).</p>
+                    <div class="bg-slate-50 p-3 rounded-lg font-mono text-sm space-y-2 text-slate-700" id="calcYInt">
+                         <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Slope -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                        <div class="w-3 h-0.5 bg-emerald-500"></div>
+                        <h3 class="text-lg font-semibold">Slope \((m)\)</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">Rewrite in form \(y = mx + c\) or use \(m = -\frac{A}{B}\).</p>
+                    <div class="bg-slate-50 p-3 rounded-lg font-mono text-sm space-y-2 text-slate-700" id="calcSlope">
+                         <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End Explorer View -->
+
+        <!-- Quiz Intro View -->
+        <div id="quizIntroView" class="hidden space-y-6 max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+            <h2 class="text-2xl font-bold mb-4 text-slate-900">Welcome to the Quiz!</h2>
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Enter your name:</label>
+                    <input type="text" id="playerNameInput" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="e.g. John Doe">
+                </div>
+                <button id="startQuizBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl shadow-sm transition-colors mt-4">
+                    Start Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- Quiz View -->
+        <div id="quizView" class="hidden max-w-5xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                
+                <!-- Left Side: Questions & Inputs -->
+                <div class="space-y-6 text-left">
+                    <h2 class="text-2xl font-bold text-slate-900">Find the properties of this line:</h2>
+                    <div class="p-6 bg-slate-50 rounded-xl border border-slate-200 flex justify-center w-full">
+                        <span id="quizEquation" class="text-3xl font-bold text-slate-900"></span>
+                    </div>
+                    
+                    <div class="space-y-4 w-full">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Slope \((m)\)</label>
+                            <input type="number" step="0.01" id="quizAnsSlope" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="e.g. -0.5">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">\(x\)-intercept</label>
+                            <input type="number" step="0.01" id="quizAnsXInt" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="e.g. 4">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">\(y\)-intercept</label>
+                            <input type="number" step="0.01" id="quizAnsYInt" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="e.g. 2">
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">* Round to 2 decimal places if necessary.</p>
+                    </div>
+
+                    <div class="pt-2">
+                        <button id="submitQuizBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-sm transition-colors w-full">
+                            Submit Answers
+                        </button>
+                    </div>
+
+                    <div id="quizFeedback" class="hidden p-4 rounded-xl text-left">
+                        <!-- Feedback populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Right Side: Graph -->
+                <div class="flex flex-col items-center">
+                    <h3 class="text-lg font-semibold mb-3">Graph of the Line</h3>
+                    <div class="relative w-full max-w-[450px] aspect-square rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-50 shadow-inner">
+                        <canvas id="quizCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                    </div>
+                    <p id="quizGraphHint" class="text-sm text-slate-500 mt-3 italic">The line will be plotted here after you submit.</p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const sliderA = document.getElementById('sliderA');
+        const sliderB = document.getElementById('sliderB');
+        const sliderC = document.getElementById('sliderC');
+        const valA = document.getElementById('valA');
+        const valB = document.getElementById('valB');
+        const valC = document.getElementById('valC');
+        const currentEq = document.getElementById('currentEq');
+        const invalidMsg = document.getElementById('invalidMsg');
+        
+        const calcXInt = document.getElementById('calcXInt');
+        const calcYInt = document.getElementById('calcYInt');
+        const calcSlope = document.getElementById('calcSlope');
+
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const quizCanvas = document.getElementById('quizCanvas');
+
+        // Quiz State & Elements
+        const toggleQuizBtn = document.getElementById('toggleQuizBtn');
+        const explorerView = document.getElementById('explorerView');
+        const quizIntroView = document.getElementById('quizIntroView');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const startQuizBtn = document.getElementById('startQuizBtn');
+        const quizView = document.getElementById('quizView');
+        const quizStatus = document.getElementById('quizStatus');
+        const playerNameDisplay = document.getElementById('playerNameDisplay');
+        const playerScoreDisplay = document.getElementById('playerScoreDisplay');
+        const quizEquation = document.getElementById('quizEquation');
+        const submitQuizBtn = document.getElementById('submitQuizBtn');
+        const quizFeedback = document.getElementById('quizFeedback');
+        
+        let isQuizMode = false;
+        let playerName = "";
+        let correctAnswers = 0;
+        let questionsAttempted = 0;
+        let currentQuizA = 0;
+        let currentQuizB = 0;
+        let currentQuizC = 0;
+        let quizTimeout = null;
+
+        toggleQuizBtn.addEventListener('click', () => {
+            if (!isQuizMode) {
+                isQuizMode = true;
+                toggleQuizBtn.textContent = "Exit Quiz Mode";
+                toggleQuizBtn.classList.replace('bg-indigo-600', 'bg-red-500');
+                toggleQuizBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-red-600');
+                
+                explorerView.classList.add('hidden');
+                quizIntroView.classList.remove('hidden');
+                
+                // Ensure name input is blank every time they enter the quiz
+                playerNameInput.value = '';
+                playerNameInput.focus();
+            } else {
+                isQuizMode = false;
+                toggleQuizBtn.textContent = "Enter Quiz Mode";
+                toggleQuizBtn.classList.replace('bg-red-500', 'bg-indigo-600');
+                toggleQuizBtn.classList.replace('hover:bg-red-600', 'hover:bg-indigo-700');
+                
+                explorerView.classList.remove('hidden');
+                quizIntroView.classList.add('hidden');
+                quizStatus.classList.add('hidden');
+                quizView.classList.add('hidden');
+                if (quizTimeout) clearTimeout(quizTimeout);
+            }
+        });
+
+        startQuizBtn.addEventListener('click', () => {
+            playerName = playerNameInput.value.trim() || "Guest";
+            playerNameDisplay.textContent = playerName;
+            correctAnswers = 0;
+            questionsAttempted = 0;
+            playerScoreDisplay.textContent = `${correctAnswers} / ${questionsAttempted}`;
+            
+            quizIntroView.classList.add('hidden');
+            quizStatus.classList.remove('hidden');
+            quizView.classList.remove('hidden');
+            
+            generateNextQuestion();
+        });
+
+        playerNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                startQuizBtn.click();
+            }
+        });
+
+        function gcd(a, b) {
+            a = Math.abs(a);
+            b = Math.abs(b);
+            while (b) {
+                let temp = b;
+                b = a % b;
+                a = temp;
+            }
+            return a;
+        }
+
+        function generateNextQuestion() {
+            // Generate equations with strictly integer x-intercepts and y-intercepts
+            // A and B are strictly non-zero so slope is always a valid number.
+            const isOrigin = Math.random() < 0.2; // 20% chance for origin line
+
+            if (isOrigin) {
+                // Passes through origin, intercepts are both 0 (integers)
+                let p, q;
+                do {
+                    p = Math.floor(Math.random() * 11) - 5;
+                    q = Math.floor(Math.random() * 11) - 5;
+                } while (p === 0 || q === 0);
+                currentQuizA = p;
+                currentQuizB = q;
+                currentQuizC = 0;
+            } else {
+                // Non-zero integer intercepts
+                let x0, y0;
+                // Generate random intercepts between -10 and 10
+                do { x0 = Math.floor(Math.random() * 21) - 10; } while (x0 === 0);
+                do { y0 = Math.floor(Math.random() * 21) - 10; } while (y0 === 0);
+                
+                // Formulate general equation coefficients: y0*x + x0*y - x0*y0 = 0
+                let A = y0;
+                let B = x0;
+                let C = -(x0 * y0);
+                
+                // Simplify coefficients using GCD
+                let div = gcd(A, gcd(B, C));
+                currentQuizA = A / div;
+                currentQuizB = B / div;
+                currentQuizC = C / div;
+                
+                // Randomly flip signs for variety
+                if (Math.random() > 0.5) {
+                    currentQuizA *= -1;
+                    currentQuizB *= -1;
+                    currentQuizC *= -1;
+                }
+            }
+
+            quizEquation.textContent = formatEquation(currentQuizA, currentQuizB, currentQuizC);
+            
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([quizEquation]).catch((err) => console.log(err.message));
+            }
+
+            // Reset UI
+            document.getElementById('quizAnsSlope').value = '';
+            document.getElementById('quizAnsXInt').value = '';
+            document.getElementById('quizAnsYInt').value = '';
+            quizFeedback.classList.add('hidden');
+            document.getElementById('quizGraphHint').classList.remove('hidden');
+            submitQuizBtn.disabled = false;
+            submitQuizBtn.classList.replace('bg-slate-400', 'bg-emerald-500');
+            
+            // Auto-focus the first input
+            document.getElementById('quizAnsSlope').focus();
+
+            // Render empty grid layout on the right. 
+            // Timeout ensures canvas rect is calculated after view unhides.
+            setTimeout(() => renderLineOnCanvas(quizCanvas, 0, 0, 0), 50);
+        }
+
+        // Add Enter and explicitly handled Tab key support for submission & navigation
+        const quizInputs = ['quizAnsSlope', 'quizAnsXInt', 'quizAnsYInt'];
+        quizInputs.forEach((id, index) => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!submitQuizBtn.disabled) submitQuizBtn.click();
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        // Shift+Tab (Go backward)
+                        const prevId = index > 0 ? quizInputs[index - 1] : 'submitQuizBtn';
+                        document.getElementById(prevId).focus();
+                    } else {
+                        // Tab (Go forward)
+                        const nextId = index < quizInputs.length - 1 ? quizInputs[index + 1] : 'submitQuizBtn';
+                        document.getElementById(nextId).focus();
+                    }
+                }
+            });
+        });
+
+        // Add reverse Tab support from the Submit button back into the inputs
+        submitQuizBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('quizAnsYInt').focus();
+            }
+        });
+
+        submitQuizBtn.addEventListener('click', () => {
+            const userSlope = parseFloat(document.getElementById('quizAnsSlope').value);
+            const userXInt = parseFloat(document.getElementById('quizAnsXInt').value);
+            const userYInt = parseFloat(document.getElementById('quizAnsYInt').value);
+
+            if (isNaN(userSlope) || isNaN(userXInt) || isNaN(userYInt)) {
+                alert("Please enter numerical values for all fields.");
+                return;
+            }
+
+            const actualSlope = -currentQuizA / currentQuizB;
+            const actualXInt = -currentQuizC / currentQuizA;
+            const actualYInt = -currentQuizC / currentQuizB;
+
+            // Adding a tolerance for floating point input (rounded to 2 decimal places)
+            const tol = 0.02;
+            const isSlopeCorrect = Math.abs(userSlope - actualSlope) <= tol;
+            const isXIntCorrect = Math.abs(userXInt - actualXInt) <= tol;
+            const isYIntCorrect = Math.abs(userYInt - actualYInt) <= tol;
+
+            quizFeedback.classList.remove('hidden', 'bg-emerald-50', 'bg-red-50', 'border-emerald-200', 'border-red-200');
+            submitQuizBtn.disabled = true;
+            submitQuizBtn.classList.replace('bg-emerald-500', 'bg-slate-400');
+
+            questionsAttempted++;
+
+            if (isSlopeCorrect && isXIntCorrect && isYIntCorrect) {
+                correctAnswers++;
+                playerScoreDisplay.textContent = `${correctAnswers} / ${questionsAttempted}`;
+                
+                quizFeedback.classList.add('bg-emerald-50', 'border', 'border-emerald-200');
+                quizFeedback.innerHTML = `
+                    <h4 class="text-emerald-700 font-bold text-lg mb-1">Correct! 🎉</h4>
+                    <p class="text-emerald-600">Great job! Loading next question in 3 seconds...</p>
+                `;
+                
+                quizTimeout = setTimeout(() => {
+                    generateNextQuestion();
+                }, 3000);
+            } else {
+                playerScoreDisplay.textContent = `${correctAnswers} / ${questionsAttempted}`;
+                quizFeedback.classList.add('bg-red-50', 'border', 'border-red-200');
+                quizFeedback.innerHTML = `
+                    <h4 class="text-red-700 font-bold text-lg mb-2">Incorrect. Let's review:</h4>
+                    <ul class="text-red-600 space-y-1 font-mono text-sm">
+                        <li>Slope \\((m = -\\frac{A}{B})\\): \\(-\\frac{${currentQuizA}}{${currentQuizB}} = ${actualSlope.toFixed(2)}\\) ${isSlopeCorrect ? '✅' : '❌'}</li>
+                        <li>\\(x\\)-intercept \\((y=0)\\): \\(\\frac{${-currentQuizC}}{${currentQuizA}} = ${actualXInt.toFixed(2)}\\) ${isXIntCorrect ? '✅' : '❌'}</li>
+                        <li>\\(y\\)-intercept \\((x=0)\\): \\(\\frac{${-currentQuizC}}{${currentQuizB}} = ${actualYInt.toFixed(2)}\\) ${isYIntCorrect ? '✅' : '❌'}</li>
+                    </ul>
+                    <button id="nextQuestionBtn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-sm w-full transition-colors">
+                        Try Next Question
+                    </button>
+                `;
+                
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([quizFeedback]).catch((err) => console.log(err.message));
+                }
+
+                document.getElementById('nextQuestionBtn').addEventListener('click', generateNextQuestion);
+            }
+
+            // Sync data to Google Apps Script
+            syncDataToGoogle(playerName, correctAnswers, questionsAttempted);
+
+            // Display graph for the quiz answer
+            document.getElementById('quizGraphHint').classList.add('hidden');
+            renderLineOnCanvas(quizCanvas, currentQuizA, currentQuizB, currentQuizC);
+        });
+
+        // Function to sync data to Google Sheets via Apps Script
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwNhzuHlKu-fgo26vp11f1mjHqnKosjlQGXdtIh6-eCChdfcOs-SWeqvGo1DHI-QvU/exec";
+
+        function syncDataToGoogle(name, score, attempted) {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") return;
+
+            const payload = {
+                name: name,
+                score: score,
+                attempted: attempted
+            };
+
+            fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                // text/plain bypasses strict CORS pre-flight in Apps Script
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => console.log('Successfully synced to Google Sheets:', data))
+            .catch(error => console.error('Error syncing to Google Sheets:', error));
+        }
+
+        // Global Resize Handler
+        window.addEventListener('resize', () => {
+            if (!isQuizMode) {
+                update();
+            } else {
+                // Determine if we should draw the line or just the empty grid based on submit state
+                if (submitQuizBtn.disabled) {
+                    renderLineOnCanvas(quizCanvas, currentQuizA, currentQuizB, currentQuizC);
+                } else {
+                    renderLineOnCanvas(quizCanvas, 0, 0, 0);
+                }
+            }
+        });
+
+        // Refactored Canvas Rendering
+        function renderLineOnCanvas(targetCanvas, A, B, C) {
+            const context = targetCanvas.getContext('2d');
+            const rect = targetCanvas.parentElement.getBoundingClientRect();
+            
+            // Prevent drawing if container is hidden/size 0
+            if (rect.width === 0 || rect.height === 0) return;
+
+            targetCanvas.width = rect.width * window.devicePixelRatio;
+            targetCanvas.height = rect.height * window.devicePixelRatio;
+            const w = targetCanvas.width;
+            const h = targetCanvas.height;
+            const GRID = 20; 
+            const sc = w / GRID;
+
+            const calcX = (mathX) => w / 2 + mathX * sc;
+            const calcY = (mathY) => h / 2 - mathY * sc;
+
+            context.clearRect(0, 0, w, h);
+            
+            // Draw Grid
+            context.strokeStyle = '#e2e8f0';
+            context.lineWidth = 1;
+            for (let i = -10; i <= 10; i++) {
+                context.beginPath(); context.moveTo(calcX(i), 0); context.lineTo(calcX(i), h); context.stroke();
+                context.beginPath(); context.moveTo(0, calcY(i)); context.lineTo(w, calcY(i)); context.stroke();
+            }
+
+            // Draw Axes
+            context.strokeStyle = '#94a3b8';
+            context.lineWidth = 2;
+            context.beginPath(); context.moveTo(0, calcY(0)); context.lineTo(w, calcY(0)); context.stroke();
+            context.beginPath(); context.moveTo(calcX(0), 0); context.lineTo(calcX(0), h); context.stroke();
+
+            context.fillStyle = '#64748b';
+            context.font = `${14 * window.devicePixelRatio}px Inter`;
+            context.fillText('x', w - 20, calcY(0) - 10);
+            context.fillText('y', calcX(0) + 10, 20);
+
+            if (A === 0 && B === 0) return;
+
+            let xInt = A !== 0 ? -C / A : null;
+            let yInt = B !== 0 ? -C / B : null;
+
+            context.save();
+            context.strokeStyle = '#4f46e5';
+            context.lineWidth = 3 * window.devicePixelRatio;
+            context.beginPath();
+
+            if (B === 0) {
+                context.moveTo(calcX(xInt), 0); context.lineTo(calcX(xInt), h);
+            } else if (A === 0) {
+                context.moveTo(0, calcY(yInt)); context.lineTo(w, calcY(yInt));
+            } else {
+                let x1 = -15, y1 = (-C - A * x1) / B;
+                let x2 = 15, y2 = (-C - A * x2) / B;
+                context.moveTo(calcX(x1), calcY(y1)); context.lineTo(calcX(x2), calcY(y2));
+            }
+            context.stroke();
+
+            if (A !== 0 && B !== 0) {
+                context.beginPath();
+                context.strokeStyle = '#10b981';
+                context.setLineDash([5, 5]);
+                context.lineWidth = 2 * window.devicePixelRatio;
+                context.moveTo(calcX(0), calcY(yInt));
+                context.lineTo(calcX(xInt), calcY(yInt));
+                context.lineTo(calcX(xInt), calcY(0));
+                context.stroke();
+                context.setLineDash([]);
+            }
+
+            const ptRadius = 6 * window.devicePixelRatio;
+            
+            // Set font for labels
+            context.font = `600 ${12 * window.devicePixelRatio}px Inter`;
+
+            if (A !== 0) {
+                context.beginPath(); context.arc(calcX(xInt), calcY(0), ptRadius, 0, Math.PI * 2);
+                context.fillStyle = '#ef4444'; context.fill();
+                context.strokeStyle = 'white'; context.lineWidth = 2 * window.devicePixelRatio; context.stroke();
+                
+                // x-intercept label
+                const xLabel = Number.isInteger(xInt) ? xInt : parseFloat(xInt.toFixed(2));
+                context.textAlign = 'center';
+                context.textBaseline = 'bottom';
+                context.strokeStyle = 'rgba(255, 255, 255, 0.9)'; // White outline for readability
+                context.lineWidth = 4 * window.devicePixelRatio;
+                context.strokeText(`(${xLabel}, 0)`, calcX(xInt), calcY(0) - 10 * window.devicePixelRatio);
+                context.fillStyle = '#ef4444';
+                context.fillText(`(${xLabel}, 0)`, calcX(xInt), calcY(0) - 10 * window.devicePixelRatio);
+            }
+            
+            if (B !== 0) {
+                context.beginPath(); context.arc(calcX(0), calcY(yInt), ptRadius, 0, Math.PI * 2);
+                context.fillStyle = '#3b82f6'; context.fill();
+                context.strokeStyle = 'white'; context.lineWidth = 2 * window.devicePixelRatio; context.stroke();
+
+                // y-intercept label (skip if it's the exact same origin point to prevent overlapping labels)
+                if (xInt !== 0 || yInt !== 0) {
+                    const yLabel = Number.isInteger(yInt) ? yInt : parseFloat(yInt.toFixed(2));
+                    context.textAlign = 'left';
+                    context.textBaseline = 'middle';
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.9)'; // White outline for readability
+                    context.lineWidth = 4 * window.devicePixelRatio;
+                    context.strokeText(`(0, ${yLabel})`, calcX(0) + 12 * window.devicePixelRatio, calcY(yInt));
+                    context.fillStyle = '#3b82f6';
+                    context.fillText(`(0, ${yLabel})`, calcX(0) + 12 * window.devicePixelRatio, calcY(yInt));
+                }
+            }
+            
+            context.restore();
+        }
+
+        // Formatting Helpers
+        function formatTerm(coeff, variable, isFirst) {
+            if (coeff === 0) return "";
+            let term = "";
+            let absCoeff = Math.abs(coeff);
+            
+            if (coeff < 0) {
+                term += isFirst ? "-" : " - ";
+            } else if (!isFirst) {
+                term += " + ";
+            }
+
+            if (absCoeff !== 1 || variable === "") {
+                term += absCoeff;
+            }
+            term += variable;
+            return term;
+        }
+
+        function formatEquation(A, B, C) {
+            if (A === 0 && B === 0) return "Invalid Equation";
+            let eq = "";
+            
+            if (A !== 0) eq += formatTerm(A, "x", true);
+            if (B !== 0) eq += formatTerm(B, "y", eq === "");
+            if (C !== 0) eq += formatTerm(C, "", eq === "");
+            
+            return "\\(" + eq + " = 0\\)";
+        }
+
+        // Main update function
+        function update() {
+            const A = parseInt(sliderA.value);
+            const B = parseInt(sliderB.value);
+            const C = parseInt(sliderC.value);
+
+            // Update Labels
+            valA.textContent = A;
+            valB.textContent = B;
+            valC.textContent = C;
+
+            // Validate
+            if (A === 0 && B === 0) {
+                currentEq.textContent = "0 = " + (-C);
+                invalidMsg.classList.remove('hidden');
+                renderLineOnCanvas(canvas, 0, 0, 0); // Just draw empty grid
+                calcXInt.innerHTML = `<span class="text-red-500">Invalid</span>`;
+                calcYInt.innerHTML = `<span class="text-red-500">Invalid</span>`;
+                calcSlope.innerHTML = `<span class="text-red-500">Invalid</span>`;
+                return;
+            } else {
+                invalidMsg.classList.add('hidden');
+            }
+
+            // Update Equation Display
+            currentEq.textContent = formatEquation(A, B, C);
+
+            // Calculations
+            let slope = B !== 0 ? -A / B : null;
+            let xInt = A !== 0 ? -C / A : null;
+            let yInt = B !== 0 ? -C / B : null;
+
+            updateExplanations(A, B, C, slope, xInt, yInt);
+            renderLineOnCanvas(canvas, A, B, C);
+
+            // Re-render LaTeX for dynamic content
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([currentEq, calcXInt, calcYInt, calcSlope]).catch((err) => console.log(err.message));
+            }
+        }
+
+        function updateExplanations(A, B, C, slope, xInt, yInt) {
+            // X-Intercept Explanation
+            if (A === 0) {
+                calcXInt.innerHTML = `
+                    <p>1. General Form: \\(${B}y ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>2. Set \\(y = 0\\): \\(${B}(0) ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>3. Result: \\(${C} = 0\\)</p>
+                    <p class="font-bold text-slate-900 mt-2">Horizontal line. No \\(x\\)-intercept${C===0?' (Line is \\(x\\)-axis)':''}.</p>
+                `;
+            } else {
+                calcXInt.innerHTML = `
+                    <p>1. Set \\(y = 0\\)</p>
+                    <p>2. \\(${A}x + ${B}(0) ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>3. \\(${A}x = ${-C}\\)</p>
+                    <p>4. \\(x = \\frac{${-C}}{${A}}\\)</p>
+                    <p class="font-bold text-red-600 mt-2">\\(x\\)-intercept = \\(${xInt.toFixed(2).replace(/\.00$/, '')}\\)</p>
+                    <p class="text-xs">Point: \\((${xInt.toFixed(2).replace(/\.00$/, '')}, 0)\\)</p>
+                `;
+            }
+
+            // Y-Intercept Explanation
+            if (B === 0) {
+                calcYInt.innerHTML = `
+                    <p>1. General Form: \\(${A}x ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>2. Set \\(x = 0\\): \\(${A}(0) ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>3. Result: \\(${C} = 0\\)</p>
+                    <p class="font-bold text-slate-900 mt-2">Vertical line. No \\(y\\)-intercept${C===0?' (Line is \\(y\\)-axis)':''}.</p>
+                `;
+            } else {
+                calcYInt.innerHTML = `
+                    <p>1. Set \\(x = 0\\)</p>
+                    <p>2. \\(${A}(0) ${B >= 0 ? '+ '+B : B}y ${C >= 0 ? '+ '+C : C} = 0\\)</p>
+                    <p>3. \\(${B}y = ${-C}\\)</p>
+                    <p>4. \\(y = \\frac{${-C}}{${B}}\\)</p>
+                    <p class="font-bold text-blue-600 mt-2">\\(y\\)-intercept = \\(${yInt.toFixed(2).replace(/\.00$/, '')}\\)</p>
+                    <p class="text-xs">Point: \\((0, ${yInt.toFixed(2).replace(/\.00$/, '')})\\)</p>
+                `;
+            }
+
+            // Slope Explanation
+            if (B === 0) {
+                calcSlope.innerHTML = `
+                    <p>Formula: \\(m = -\\frac{A}{B}\\)</p>
+                    <p>\\(m = -\\frac{${A}}{${B}}\\)</p>
+                    <p>Division by zero!</p>
+                    <p class="font-bold text-slate-900 mt-2">Slope is Undefined</p>
+                    <p class="text-xs">(Vertical Line)</p>
+                `;
+            } else {
+                calcSlope.innerHTML = `
+                    <p>Formula: \\(m = -\\frac{A}{B}\\)</p>
+                    <p>\\(m = -\\frac{${A}}{${B}}\\)</p>
+                    <p class="font-bold text-emerald-600 mt-2">Slope \\((m)\\) = \\(${slope.toFixed(2).replace(/\.00$/, '')}\\)</p>
+                    <div class="mt-2 text-xs border-t border-slate-200 pt-2 text-slate-500">
+                        Alternatively, isolate \\(y\\):<br>
+                        \\(${B}y = ${-A}x ${-C >= 0 ? '+ ' + (-C) : (-C)}\\)<br>
+                        \\(y = \\left(\\frac{${-A}}{${B}}\\right)x + \\left(\\frac{${-C}}{${B}}\\right)\\)
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize
+        [sliderA, sliderB, sliderC].forEach(slider => {
+            slider.addEventListener('input', update);
+        });
+
+        // Setup canvas size and draw initial state
+        setTimeout(update, 100); 
+    </script>
+</body>
+</html>
